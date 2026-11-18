@@ -5,6 +5,11 @@ setup(
     version='0.0.0',
     packages=[],
     py_modules=['teleop_twist_keyboard'],
+    data_files=[
+        ('share/ament_index/resource_index/packages', ['resource/teleop_twist_keyboard']),
+        ('share/teleop_twist_keyboard', ['package.xml']),
+        ('share/teleop_twist_keyboard/config', ['config/keyboard.yaml']),
+    ],
     install_requires=['setuptools'],
     maintainer='Rohan Agrawal',
     maintainer_email='rohan@osrfoundation.org',
