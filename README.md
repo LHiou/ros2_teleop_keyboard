@@ -21,11 +21,11 @@
 
 节点一启动就持续发布零速度。先等待服务就绪，按 T 解锁，再按 O 切入 OFFBOARD，然后按 Q 升高。解锁和切模式不会自动起飞；状态行持续显示实际模式、解锁状态、当前速度和服务响应。
 
-## 接口和参数
+## 接口和控制参数
 
 所有名称均为相对名称，通过节点命名空间选择车辆。
 
-| 接口 | 默认名称 | 类型 |
+| 接口 | 相对名称 | 类型 |
 | --- | --- | --- |
 | 速度输出 | `control/manual` | `trajectory_msgs/msg/MultiDOFJointTrajectoryPoint` |
 | 飞机状态订阅 | `mavros/state` | `mavros_msgs/msg/State` |
@@ -34,16 +34,9 @@
 
 输出只有一个 `velocities` 元素，包含 `linear.x/y/z` 和 `angular.z`。不填写位置和加速度，不执行轨迹跟踪。Bridge 将其转换为 MAVROS 速度设定点。
 
-启动参数见 `config/keyboard.yaml`：
+线速度从 0.5 m/s 起步，偏航角速度从 1 rad/s 起步，按 `+` 或 `-` 同时调整两者。运动按键停止重复 0.6 秒后，目标速度归零。线加减速度限制为 1 m/s²，偏航加减速度限制为 2 rad/s²。
 
-- `speed`：初始线速度，默认 0.5 m/s；`turn`：初始偏航角速度，默认 1 rad/s。
-- `publish_rate`：默认 20 Hz，在无按键和服务请求期间也持续发布。
-- `key_timeout`：默认 0.6 秒，运动按键停止重复后目标速度归零。
-- `linear_acceleration`：各线速度轴的加/减速度限制，默认 1 m/s²。
-- `angular_acceleration`：偏航加/减速度限制，默认 2 rad/s²。
-- `output_topic`、`state_topic`、`arming_service`、`mode_service`：接口名称。
-
-参数在启动时读取，修改配置后重新启动节点。发布定时器和按键超时都使用单调时钟，不依赖 `/clock`；仿真暂停或变慢时，键盘仍按墙钟 20 Hz 发布并刷新终端状态。输出没有 Header，转换后的时间戳由 Bridge 生成。
+发布定时器和按键超时都使用单调时钟。仿真暂停或变慢时，键盘仍按墙钟 20 Hz 发布并刷新终端状态。转换后的时间戳由 Bridge 生成。
 
 ## 容器部署
 
@@ -74,7 +67,6 @@ UAV_NAMESPACE=uav2 docker compose run --rm keyboard
 colcon build --packages-select teleop_twist_keyboard
 source install/setup.bash
 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args \
-  --params-file install/teleop_twist_keyboard/share/teleop_twist_keyboard/config/keyboard.yaml \
   -r __ns:=/uav1
 ```
 
@@ -83,8 +75,7 @@ ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args \
 | 文件 | 作用 |
 | --- | --- |
 | `teleop_twist_keyboard.py` | 按键读取、速度平滑、固定频率发布、状态显示及异步服务调用 |
-| `config/keyboard.yaml` | 控制参数与话题/服务名称 |
 | `package.xml` | ROS 包和运行依赖声明 |
-| `setup.py` | Python 模块、可执行入口和配置文件安装 |
+| `setup.py` | 安装 Python 模块和可执行入口 |
 | `setup.cfg` | 将脚本安装到 ROS 2 的 `lib/teleop_twist_keyboard` 目录 |
 | `resource/teleop_twist_keyboard` | ament 包索引标记，用于 `ros2 run` 查找包 |

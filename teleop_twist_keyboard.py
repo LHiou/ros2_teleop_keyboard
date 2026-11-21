@@ -12,7 +12,6 @@ import tty
 from geometry_msgs.msg import Twist
 from mavros_msgs.msg import State
 from mavros_msgs.srv import CommandBool, SetMode
-from rcl_interfaces.msg import ParameterDescriptor
 import rclpy
 from rclpy.clock import Clock, ClockType
 from rclpy.node import Node
@@ -44,18 +43,14 @@ class KeyboardControl(Node):
     """单节点完成按键解释、速度发布和 MAVROS 服务调用。"""
 
     def __init__(self):
-        """读取启动参数，创建发布器、状态订阅和两个服务客户端。"""
+        """初始化控制参数和 ROS 接口。"""
         super().__init__('teleop_twist_keyboard')
-        self.speed = self.parameter('speed', 0.5)
-        self.turn = self.parameter('turn', 1.0)
-        self.rate = self.parameter('publish_rate', 20.0)
-        self.key_timeout = self.parameter('key_timeout', 0.6)
-        self.acceleration = self.parameter('linear_acceleration', 1.0)
-        self.yaw_acceleration = self.parameter('angular_acceleration', 2.0)
-        topic = self.parameter('output_topic', 'control/manual')
-        state_topic = self.parameter('state_topic', 'mavros/state')
-        arming_service = self.parameter('arming_service', 'mavros/cmd/arming')
-        mode_service = self.parameter('mode_service', 'mavros/set_mode')
+        self.speed = 0.5             # m/s
+        self.turn = 1.0              # rad/s
+        self.rate = 20.0             # Hz
+        self.key_timeout = 0.6       # s
+        self.acceleration = 1.0      # m/s²
+        self.yaw_acceleration = 2.0  # rad/s²
 
         self.target = [0.0] * 4
         self.velocity = [0.0] * 4
@@ -63,22 +58,12 @@ class KeyboardControl(Node):
         self.state = State()
         self.state.mode = '未知'
         self.result = '等待指令'
-        self.publisher = self.create_publisher(MultiDOFJointTrajectoryPoint, topic, 10)
-        self.create_subscription(State, state_topic, self.on_state, 10)
-        self.arm_client = self.create_client(CommandBool, arming_service)
-        self.mode_client = self.create_client(SetMode, mode_service)
+        self.publisher = self.create_publisher(MultiDOFJointTrajectoryPoint, 'control/manual', 10)
+        self.create_subscription(State, 'mavros/state', self.on_state, 10)
+        self.arm_client = self.create_client(CommandBool, 'mavros/cmd/arming')
+        self.mode_client = self.create_client(SetMode, 'mavros/set_mode')
         self.command_clock = Clock(clock_type=ClockType.STEADY_TIME)
         self.create_timer(1.0 / self.rate, self.publish_command, clock=self.command_clock)
-
-    def parameter(self, name, default):
-        """声明启动参数，返回实际值；修改配置后需重启节点。
-
-        :param name: 参数名。
-        :param default: 默认值。
-        :return: 配置值。
-        """
-        descriptor = ParameterDescriptor(read_only=True)
-        return self.declare_parameter(name, default, descriptor).value
 
     def on_state(self, message):
         """保存飞机实际状态，供终端显示。
